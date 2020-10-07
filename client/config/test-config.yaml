@@ -1,0 +1,16 @@
+location: My Home
+sampleConfigs:
+- entityType: ENTITY_TYPE_ZONE
+  entityName: Uponor Smatrix T-169
+  sampleType: SAMPLE_TYPE_TEMPERATURE
+  sampleName: Bathroom
+  metricType: METRIC_TYPE_GAUGE
+  valueMultiplier: 1
+  thermostatID: abcd
+- entityType: ENTITY_TYPE_ZONE
+  entityName: Uponor Smatrix T-169
+  sampleType: SAMPLE_TYPE_TEMPERATURE
+  sampleName: Living room
+  metricType: METRIC_TYPE_GAUGE
+  valueMultiplier: 1
+  thermostatID: efgh
