@@ -174,7 +174,7 @@ func (c *client) receiveResponse() (err error) {
 				!strings.Contains(rawmsg, "BAD") &&
 				!strings.Contains(rawmsg, "ERR") {
 
-				isValidMessage, err := regexp.MatchString(`^\d{3} ( I| W|RQ|RP) --- \d{2}:\d{6} (--:------ |\d{2}:\d{6} ){2}[0-9a-fA-F]{4} \d{3}`, rawmsg)
+				isValidMessage, err := regexp.MatchString(`^\d{3} ( I| W|RQ|RP) --- (--:------|\d{2}:\d{6}) (--:------ |\d{2}:\d{6} ){2}[0-9a-fA-F]{4} \d{3}`, rawmsg)
 				if err != nil || !isValidMessage {
 					log.Info().Msg(rawmsg)
 				} else {
