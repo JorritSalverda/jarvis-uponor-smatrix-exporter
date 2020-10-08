@@ -186,12 +186,12 @@ func (c *client) receiveResponse() (err error) {
 
 				isValidMessage, err := regexp.MatchString(`^\d{3} ( I| W|RQ|RP) --- (--:------|\d{2}:\d{6}) (--:------ |\d{2}:\d{6} ){2}[0-9a-fA-F]{4} \d{3}`, rawmsg)
 				if err != nil || !isValidMessage {
-					log.Info().Msg(rawmsg)
+					log.Info().Msgf("read: %v", rawmsg)
 				} else {
-					log.Debug().Msgf("evohome: %v", rawmsg)
+					log.Debug().Msgf("evohome: %v / %v", rawmsg, buf)
 				}
 			} else {
-				log.Info().Msg(rawmsg)
+				log.Info().Msgf("read: %v / %v", rawmsg, buf)
 			}
 		}
 	}
