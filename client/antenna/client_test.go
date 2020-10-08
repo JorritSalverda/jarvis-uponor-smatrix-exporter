@@ -15,7 +15,8 @@ func TestGetMeasurement(t *testing.T) {
 			t.Skip("skipping test in short mode.")
 		}
 
-		client, err := NewClient("/dev/ttyUSB0")
+		done := make(chan struct{})
+		client, err := NewClient("/dev/ttyUSB0", done)
 		assert.Nil(t, err)
 
 		config := apiv1.Config{
@@ -35,7 +36,8 @@ func TestGetMeasurement(t *testing.T) {
 			t.Skip("skipping test in short mode.")
 		}
 
-		client, err := NewClient("/dev/ttyUSB0")
+		done := make(chan struct{})
+		client, err := NewClient("/dev/ttyUSB0", done)
 		assert.Nil(t, err)
 
 		config := apiv1.Config{

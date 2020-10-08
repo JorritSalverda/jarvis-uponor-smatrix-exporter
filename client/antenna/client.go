@@ -23,7 +23,7 @@ type Client interface {
 }
 
 // NewClient returns new websocket.Client
-func NewClient(antennaUSBDevicePath string) (Client, error) {
+func NewClient(antennaUSBDevicePath string, done chan struct{}) (Client, error) {
 	if antennaUSBDevicePath == "" {
 		return nil, fmt.Errorf("Please set the usb device path for the antenna")
 	}
@@ -32,6 +32,7 @@ func NewClient(antennaUSBDevicePath string) (Client, error) {
 		antennaUSBDevicePath: antennaUSBDevicePath,
 		waitGroup:            &sync.WaitGroup{},
 		lastReceivedMessage:  time.Now().UTC(),
+		done:                 done,
 	}, nil
 }
 
@@ -43,6 +44,8 @@ type client struct {
 	in                  *bufio.Reader
 	responseChannel     chan []byte
 	lastReceivedMessage time.Time
+	done                chan struct{}
+	teardown            bool
 }
 
 func (c *client) GetMeasurement(config apiv1.Config) (measurement contractsv1.Measurement, err error) {
@@ -52,7 +55,10 @@ func (c *client) GetMeasurement(config apiv1.Config) (measurement contractsv1.Me
 	go c.keepSerialPortAlive()
 
 	c.responseChannel = make(chan []byte)
-	c.receiveResponse()
+	go c.receiveResponse()
+
+	<-c.done
+	c.teardown = true
 
 	// measurement = contractsv1.Measurement{
 	// 	ID:             uuid.New().String(),
@@ -119,25 +125,32 @@ func (c *client) closeSerialPort() {
 	time.Sleep(5 * time.Second)
 }
 
+func (c *client) resetSerialPort() {
+
+	// wait for any previous serial port reset to finish before continuing
+	c.waitGroup.Wait()
+
+	// lock area during reset
+	c.waitGroup.Add(1)
+	defer c.waitGroup.Done()
+
+	// perform the reset
+	c.closeSerialPort()
+	c.openSerialPort()
+}
+
 func (c *client) keepSerialPortAlive() {
 	for {
 		time.Sleep(time.Duration(foundation.ApplyJitter(120)) * time.Second)
 
 		if time.Since(c.lastReceivedMessage).Minutes() > 2 {
 			log.Info().Msg("Received last message more than 2 minutes ago, resetting serial port...")
-
-			c.waitGroup.Add(1)
-			c.closeSerialPort()
-			c.openSerialPort()
-			defer c.closeSerialPort()
-			c.waitGroup.Done()
+			c.resetSerialPort()
 		}
 	}
 }
 
 func (c *client) receiveResponse() (err error) {
-	// defer close(c.done)
-
 	// execute commands and read from serial port
 	for {
 		// wait for serial port reset to finish before continuing
@@ -145,17 +158,14 @@ func (c *client) receiveResponse() (err error) {
 
 		// read from serial port
 		buf, isPrefix, err := c.in.ReadLine()
+		if c.teardown {
+			return nil
+		}
 
 		if err != nil {
 			if err != io.EOF {
 				log.Warn().Err(err).Msg("Error reading from serial port, resetting port...")
-
-				// wait for serial port reset to finish before continuing
-				c.waitGroup.Wait()
-
-				c.closeSerialPort()
-				c.openSerialPort()
-				defer c.closeSerialPort()
+				c.resetSerialPort()
 			}
 		} else if isPrefix {
 			log.Warn().Str("_msg", string(buf)).Msgf("Message is too long for buffer and split over multiple lines")
@@ -183,7 +193,6 @@ func (c *client) receiveResponse() (err error) {
 			} else {
 				log.Info().Msg(rawmsg)
 			}
-
 		}
 	}
 }

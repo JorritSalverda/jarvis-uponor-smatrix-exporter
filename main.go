@@ -43,6 +43,8 @@ func main() {
 	// init log format from envvar ESTAFETTE_LOG_FORMAT
 	foundation.InitLoggingFromEnv(foundation.NewApplicationInfo(appgroup, app, version, branch, revision, buildDate))
 
+	gracefulShutdown, waitGroup := foundation.InitGracefulShutdownHandling()
+
 	// create context to cancel commands on sigterm
 	ctx := foundation.InitCancellationContext(context.Background())
 
@@ -85,7 +87,8 @@ func main() {
 	// get previous measurement
 	// measurementMap := readLastMeasurementFromMeasurementFile()
 
-	antennaClient, err := antenna.NewClient(*antennaUSBDevicePath)
+	done := make(chan struct{})
+	antennaClient, err := antenna.NewClient(*antennaUSBDevicePath, done)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed creating antenna client")
 	}
@@ -103,6 +106,8 @@ func main() {
 	// writeMeasurementToConfigmap(kubeClientset, measurement)
 
 	log.Info().Msgf("Stored %v samples, exiting...", len(measurement.Samples))
+
+	foundation.HandleGracefulShutdown(gracefulShutdown, waitGroup, func() { close(done) })
 }
 
 // func readLastMeasurementFromMeasurementFile() (measurementMap map[string]float64) {
