@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+  labels:
+    {{- include "jarvis-uponor-smatrix-exporter.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "jarvis-uponor-smatrix-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}  
+      labels:
+        {{- include "jarvis-uponor-smatrix-exporter.labels" . | nindent 12 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      serviceAccountName: {{ include "jarvis-uponor-smatrix-exporter.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 12 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 14 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}    
+        env:
+        - name: ESTAFETTE_LOG_FORMAT
+          value: {{ .Values.logFormat }}
+        - name: ANTENNA_USB_DEVICE_PATH
+          value: {{ .Values.deployment.antennaUSBDevicePath }}
+        - name: BQ_ENABLE
+          valueFrom:
+            configMapKeyRef:
+              key: bq-enable
+              name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+        - name: BQ_PROJECT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+              key: bq-project-id
+        - name: BQ_DATASET
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+              key: bq-dataset
+        - name: BQ_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+              key: bq-table
+        - name: MEASUREMENT_FILE_CONFIG_MAP_NAME
+          value: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /secrets/keyfile.json
+        resources:
+          {{- toYaml .Values.resources | nindent 14 }}
+        volumeMounts:
+        - name: configs
+          mountPath: /configs
+        - name: secrets
+          mountPath: /secrets
+        - name: antenna
+          mountPath: {{ .Values.deployment.antennaUSBDevicePath }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 300
+      volumes:
+      - name: configs
+        configMap:
+          name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+      - name: secrets
+        secret:
+          defaultMode: 420
+          secretName: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+      - name: antenna
+        hostPath:
+          path: {{ .Values.deployment.antennaUSBDevicePath }}
