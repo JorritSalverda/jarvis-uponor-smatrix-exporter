@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -158,9 +160,30 @@ func (c *client) receiveResponse() (err error) {
 		} else if isPrefix {
 			log.Warn().Str("_msg", string(buf)).Msgf("Message is too long for buffer and split over multiple lines")
 		} else {
-			log.Debug().Msg(string(buf))
+
 			c.lastReceivedMessage = time.Now().UTC()
 			// c.responseChannel <- buf
+
+			rawmsg := string(buf)
+			length := len(rawmsg)
+
+			// make sure no obvious errors in getting the data....
+			if length > 40 &&
+				!strings.Contains(rawmsg, "_ENC") &&
+				!strings.Contains(rawmsg, "_BAD") &&
+				!strings.Contains(rawmsg, "BAD") &&
+				!strings.Contains(rawmsg, "ERR") {
+
+				isValidMessage, err := regexp.MatchString(`^\d{3} ( I| W|RQ|RP) --- \d{2}:\d{6} (--:------ |\d{2}:\d{6} ){2}[0-9a-fA-F]{4} \d{3}`, rawmsg)
+				if err != nil || !isValidMessage {
+					log.Info().Msg(rawmsg)
+				} else {
+					log.Debug().Msgf("evohome: %v", rawmsg)
+				}
+			} else {
+				log.Info().Msg(rawmsg)
+			}
+
 		}
 	}
 }
