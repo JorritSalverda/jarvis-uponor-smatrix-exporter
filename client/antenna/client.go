@@ -50,6 +50,8 @@ type client struct {
 
 func (c *client) GetMeasurement(config apiv1.Config) (measurement contractsv1.Measurement, err error) {
 
+	log.Info().Msg("Starting retrieval of measurement...")
+
 	c.openSerialPort()
 	defer c.closeSerialPort()
 	go c.keepSerialPortAlive()
