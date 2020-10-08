@@ -88,24 +88,26 @@ func main() {
 	// measurementMap := readLastMeasurementFromMeasurementFile()
 
 	done := make(chan struct{})
-	antennaClient, err := antenna.NewClient(*antennaUSBDevicePath, done)
+	antennaClient, err := antenna.NewClient(*antennaUSBDevicePath, waitGroup, done)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed creating antenna client")
 	}
 
-	measurement, err := antennaClient.GetMeasurement(config)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed ")
-	}
+	go func() {
+		measurement, err := antennaClient.GetMeasurement(config)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed getting measurement from Uponor Smatrix")
+		}
 
-	err = bigqueryClient.InsertMeasurement(*bigqueryDataset, *bigqueryTable, measurement)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed inserting measurements into bigquery table")
-	}
+		// err = bigqueryClient.InsertMeasurement(*bigqueryDataset, *bigqueryTable, measurement)
+		// if err != nil {
+		// 	log.Fatal().Err(err).Msg("Failed inserting measurements into bigquery table")
+		// }
 
-	// writeMeasurementToConfigmap(kubeClientset, measurement)
+		// writeMeasurementToConfigmap(kubeClientset, measurement)
 
-	log.Info().Msgf("Stored %v samples, exiting...", len(measurement.Samples))
+		log.Info().Msgf("Stored %v samples, exiting...", len(measurement.Samples))
+	}()
 
 	foundation.HandleGracefulShutdown(gracefulShutdown, waitGroup, func() { close(done) })
 }

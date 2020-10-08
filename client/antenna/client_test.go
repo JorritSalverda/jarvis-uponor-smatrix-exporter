@@ -1,6 +1,7 @@
 package antenna
 
 import (
+	"sync"
 	"testing"
 
 	contractsv1 "github.com/JorritSalverda/jarvis-contracts-golang/contracts/v1"
@@ -15,8 +16,9 @@ func TestGetMeasurement(t *testing.T) {
 			t.Skip("skipping test in short mode.")
 		}
 
+		waitGroup := &sync.WaitGroup{}
 		done := make(chan struct{})
-		client, err := NewClient("/dev/ttyUSB0", done)
+		client, err := NewClient("/dev/ttyUSB0", waitGroup, done)
 		assert.Nil(t, err)
 
 		config := apiv1.Config{
@@ -36,8 +38,9 @@ func TestGetMeasurement(t *testing.T) {
 			t.Skip("skipping test in short mode.")
 		}
 
+		waitGroup := &sync.WaitGroup{}
 		done := make(chan struct{})
-		client, err := NewClient("/dev/ttyUSB0", done)
+		client, err := NewClient("/dev/ttyUSB0", waitGroup, done)
 		assert.Nil(t, err)
 
 		config := apiv1.Config{

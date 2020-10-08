@@ -23,14 +23,14 @@ type Client interface {
 }
 
 // NewClient returns new websocket.Client
-func NewClient(antennaUSBDevicePath string, done chan struct{}) (Client, error) {
+func NewClient(antennaUSBDevicePath string, waitGroup *sync.WaitGroup, done chan struct{}) (Client, error) {
 	if antennaUSBDevicePath == "" {
 		return nil, fmt.Errorf("Please set the usb device path for the antenna")
 	}
 
 	return &client{
 		antennaUSBDevicePath: antennaUSBDevicePath,
-		waitGroup:            &sync.WaitGroup{},
+		waitGroup:            waitGroup,
 		lastReceivedMessage:  time.Now().UTC(),
 		done:                 done,
 	}, nil
@@ -58,6 +58,9 @@ func (c *client) GetMeasurement(config apiv1.Config) (measurement contractsv1.Me
 	go c.receiveResponse()
 
 	<-c.done
+	log.Info().Msg("Received done signal, tearing down serial port listener")
+	c.waitGroup.Add(1)
+	defer c.waitGroup.Done()
 	c.teardown = true
 
 	// measurement = contractsv1.Measurement{
@@ -159,6 +162,7 @@ func (c *client) receiveResponse() (err error) {
 		// read from serial port
 		buf, isPrefix, err := c.in.ReadLine()
 		if c.teardown {
+			log.Info().Msg("Completing teardown of serial port listener")
 			return nil
 		}
 
