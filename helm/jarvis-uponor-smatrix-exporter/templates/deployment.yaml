@@ -43,6 +43,11 @@ spec:
             configMapKeyRef:
               key: bq-enable
               name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
+        - name: BQ_INIT
+          valueFrom:
+            configMapKeyRef:
+              key: bq-init
+              name: {{ include "jarvis-uponor-smatrix-exporter.fullname" . }}
         - name: BQ_PROJECT_ID
           valueFrom:
             configMapKeyRef:
